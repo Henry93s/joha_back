@@ -31,6 +31,7 @@ class UserService {
         const decryptedPassword = decryptPassword(bodyData.password, key);
         */
 
+        // 실제 프론트에서 이미지 확장자 검사, 파일 용량 검사 수행해서 넘어옴 !
         // aws 버킷에 옮기기 전 이미지 가공 + 버킷 옮기기 + url 반환 작업(util 로 옮김)
         let photo;
         if(imageFiles[0] !== 'notFound'){
@@ -97,6 +98,7 @@ class UserService {
             Reflect.deleteProperty(bodyData, "password");
         }
 
+        // 실제 프론트에서 이미지 확장자 검사, 파일 용량 검사 수행해서 넘어옴 !
         // 프로필 사진을 수정할 때 기존 s3 버킷 이미지 삭제 후 -> s3 이미지 sharp 처리 후 넣기 -> url 반환 처리 예정
         if(imageFiles[0] !== 'notFound') {
             let deleteFiles = [];
