@@ -8,15 +8,33 @@ const reqUserAdminCheck = require('../middlewares/reqUserAdminCheck');
 const emailCheck = require('../middlewares/emailCheck');
 const passport = require('passport');
 const jwtMiddleware = require('../middlewares/jwtMiddleware');
-const multer = require('multer');
+// multer 이미지 업로드 설정 가져오기
+const upload = require('../utils/multerConfig');
 
 const router = Router();
 
 /* create (완료) */ 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', upload.array('photo'), asyncHandler(async (req, res) => {
     const bodyData = req.body;
-    const result = await userService.createUser(bodyData);
+    const imageFiles = (!req.files || req.files.length === 0) ? ["notFound"] : req.files;
+    const result = await userService.createUser(bodyData, imageFiles);
     return res.status(201).json(result);
+}));
+
+// update (수정)
+router.put('/', upload.array('photo'), asyncHandler(async (req, res) => {
+    const bodyData = req.body;
+    const {email} = bodyData;
+    const imageFiles = (!req.files || req.files.length === 0) ? ["notFound"] : req.files;
+    const result = await userService.updateUser({email}, bodyData, imageFiles);
+    return res.status(200).json(result);
+}));
+
+// delete (삭제)
+router.delete('/', asyncHandler(async (req, res) => {
+    const {email} = req.body;
+    const result = await userService.deleteUser({email});
+    return res.status(200).json(result);
 }));
 
 // JWT LOGOUT : 쿠키에 있는 토큰을 비우고, 만료 기간 0 으로 설정
