@@ -10,7 +10,7 @@ const local = require('./strategy/loginStrategy');
 const jwtlocal = require('./strategy/jwtStrategy');
 const jwtMiddleware = require('./middlewares/jwtMiddleware');
 // server router
-
+const userRouter = require('./routes/userRouter');
 // multer 설정 가져오기
 const upload = require('./utils/multerConfig');
 
@@ -48,7 +48,7 @@ mongoose.connection.on('err', (err) => {
 });
 
 // user, login, ... router
-
+app.use('/users', userRouter);
 
 // app.get (front routing)
 app.get('*', (req, res) => {
@@ -68,7 +68,6 @@ app.use((err, req, res, next) => {
         return res.status(400).json(err);
     }
 });
-
 
 app.listen(process.env.PORT, () => {
     console.log(`${process.env.PORT} server port connected`);
