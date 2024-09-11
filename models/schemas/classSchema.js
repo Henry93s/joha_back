@@ -74,7 +74,7 @@ const classSchema = new Schema({
         index: true
     },
     // 레슨 가능 일정 (요일 및 시간)
-    sub_available_time: {
+    sub_available_times: {
         type: [String],
         required: true,
         index: true
