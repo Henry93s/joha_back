@@ -1,4 +1,4 @@
-const { User, Verify, Post, Reserve } = require("../models");
+const { User } = require("../models");
 const code = require("../utils/data/code");
 const generateRandomValue = require("../utils/generate-random-value");
 const sendEmail = require("../utils/nodemailer");
