@@ -27,18 +27,27 @@ router.post(
 
 /* 전체 레슨 조회 */
 router.get(
-  "/",
-  asyncHandler(async (req, res) => {})
+    "/",
+    asyncHandler(async (req, res) => {
+        const result = await classService.findAllClass();
+        return res.status(200).json(result);
+    }),
+);
+
+/* title로 검색되는 레슨 조회 */
+router.get(
+    "/search",
+    asyncHandler(async (req, res) => {
+        const { title } = req.query;
+        const result = await classService.findClassByTitle(title);
+        return res.status(200).json(result);
+    }),
 );
 
 /* nanoid 로 특정 레슨 조회 */
 router.get(
-  "/nanoid",
-  asyncHandler(async (req, res) => {
-    const { nanoid } = req.body;
-    const result = await classService.findOneClass(nanoid);
-    return res.status(200).json(result);
-  })
+    "/nanoid",
+    asyncHandler(async (req, res) => {}),
 );
 
 // update (수정)
