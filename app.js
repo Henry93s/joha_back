@@ -51,6 +51,7 @@ mongoose.connection.on('err', (err) => {
 // user, login, ... router
 app.use('/users', userRouter);
 app.use('/class', classRouter);
+app.use('/login', loginRouter);
 
 // app.get (front routing)
 app.get('*', (req, res) => {
