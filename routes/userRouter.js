@@ -13,7 +13,7 @@ const upload = require('../utils/multerConfig');
 
 const router = Router();
 
-/* create (완료) */ 
+/* create */ 
 router.post('/', upload.array('photo'), asyncHandler(async (req, res) => {
     const bodyData = req.body;
     const imageFiles = (!req.files || req.files.length === 0) ? ["notFound"] : req.files;
@@ -21,6 +21,22 @@ router.post('/', upload.array('photo'), asyncHandler(async (req, res) => {
     return res.status(201).json(result);
   })
 );
+
+// 서버에 로그인한 정보 확인 시 전달 라우터
+router.get('/getuser', asyncHandler(async (req, res) => {
+    if(!req.user){
+        console.log("logout 상태 (server check)")
+        return res.status(200).json({code: 411, message: "logout 상태 입니다.(server chk)"});
+    }
+    const data = {email: req.user.email, name: req.user.name};
+    // 프론트 요청에 대해 최신 닉네임, 연락처, 프로필 포토 데이터를 넘겨주기(수정이 가능한 데이터 이므로)
+    const result = await userService.findByEmail({email: data.email});
+    data.email = result.data.email;
+    data.phone = result.data.phone;
+    data.is_admin = result.data.is_admin;
+    data.photo = result.data.photo;
+    return res.status(200).json({code: 200, data: data, message: "login 상태 입니다.(server chk)"});
+}));
 
 /* 전체 유저 조회 */
 router.get(
@@ -30,6 +46,13 @@ router.get(
     return res.status(200).json(result);
   })
 );
+
+// 유저 아이디 조회
+router.post('/findid', asyncHandler(async (req, res) => {
+    const bodyData = req.body;
+    const result = await userService.findUserID(bodyData);
+    return res.status(200).json(result);
+}));
 
 /* 이메일로 특정 유저 조회 */
 router.get(
@@ -57,8 +80,29 @@ router.delete('/', asyncHandler(async (req, res) => {
     return res.status(200).json(result);
 }));
 
+// 회원가입 시 이메일 인증 코드 발급 진행
+router.post('/verify', emailCheck, asyncHandler(async (req, res) => {
+    const {email} = req.body;
+    const result = await userService.joinVerify({email});
+    return res.status(201).json(result);
+}));
+
+// 회원가입 시 이메일 인증 확인 요청 진행
+router.post('/verify/confirm', emailCheck, asyncHandler(async (req, res) => {
+    const {email, secret} = req.body;
+    const result = await userService.joinVerifyConfirm({email, secret});
+    return res.status(200).json(result);
+}));
+
+// 비밀번호 찾기 시 이메일 인증 요청
+router.post('/verify/findpw', emailCheck, asyncHandler(async (req, res) => {
+    const {email} = req.body;
+    const result = await userService.pwfindVerify({email});
+    return res.status(200).json(result);
+}))
+
 // JWT LOGOUT : 쿠키에 있는 토큰을 비우고, 만료 기간 0 으로 설정
-// post 요청으로 url 직접 접근 차단 (완료)
+// post 요청으로 url 직접 접근 차단
 router.post(
   "/logout",
   asyncHandler(async (req, res) => {
