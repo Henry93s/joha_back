@@ -1,4 +1,4 @@
-const { User } = require("../models");
+const { User, Verify } = require("../models");
 const code = require("../utils/data/code");
 const generateRandomValue = require("../utils/generate-random-value");
 const sendEmail = require("../utils/nodemailer");
@@ -12,23 +12,37 @@ const deleteImageFromAWS = require('../utils/deleteImageFromAWS');
 
 class UserService {
     /* create 완료 */
-    async createUser(bodyData, imageFiles){  
-        // 추후 회원가입 시 인증 과정 추가 예정
-    // 전화번호 중복 확인
-    const { phone } = bodyData;
-    const phoneUser = await User.findOne({ phone });
-    if (phoneUser) {
-      const error = new Error();
-      Object.assign(error, {
-        code: 400,
-        message: "중복된 전화번호입니다. 전화번호를 변경해주세요.",
-      });
-      throw error;
-    }
+    async createUser(bodyData, imageFiles){
+        // 이메일 인증이 정상적으로 되었는지(is_verified === true) 검사
+        const { email } = bodyData;
+        const verify = await Verify.findOne({data: email, code: code.VERIFYCODE});
+        if(!verify){
+            const error = new Error();
+            Object.assign(error, {code: 401, message: "이메일 인증을 먼저 진행해주세요."});
+            throw error;
+        }
+        if(!verify.is_verified){
+            const error = new Error();
+            Object.assign(error, {code: 401, message: "이메일 인증이 되지 않았습니다. 메일에서 인증 코드를 확인해주세요."});
+            throw error;
+        }
+
+        // 전화번호 중복 확인
+        const { phone } = bodyData;
+        const phoneUser = await User.findOne({ phone });
+        if (phoneUser) {
+        const error = new Error();
+        Object.assign(error, {
+            code: 400,
+            message: "중복된 전화번호입니다. 전화번호를 변경해주세요.",
+        });
+        throw error;
+        }
+
+        // 이메일 인증이 되었고 회원가입을 진행하므로 더 이상 쓸모가 없으므로 제거
+        await Verify.deleteMany(verify);
 
     /* front 로그인 개발 시 주석 해제
-        // password 를 백엔드에 보내 줄 때 aes-128 양방향 암호화 적용할 것
-        // 백엔드에서는 aes-128 을 복호화하고 sha-256 해시화하여 db sha-256 해시 값과 비교시킨다.
         const key = process.env.AES_KEY;
         const decryptedPassword = decryptPassword(bodyData.password, key);
         */
@@ -58,6 +72,155 @@ class UserService {
         });
         return {code: 200, message: `${bodyData.email} 계정으로 회원가입이 성공하였습니다.`};
     }
+
+    // 인증 요청 분리 *(비밀번호 찾기 - 이메일이 존재해야 다음 스텝으로 넘어가야 함)
+    async pwfindVerify({email}){
+        // 인증 코드 받는 이메일이 이미 존재하는지 검사
+        // 이메일 인증이 정식으로 들어갈 때 createUser 에 있는 이메일 존재 검사는 필요없음.
+        const user = await User.findOne({email});
+        // 기존 회원가입 인증 요청 부분과의 차이점
+        if(!user){
+            const error = new Error();
+            Object.assign(error, {code: 400, message: "회원가입 되어 있지 않은 이메일입니다."});
+            throw error;
+        }
+
+        // 기존 verify 데이터가 있을 시 새 secret 으로 변경
+        const newSecret = generateRandomValue(code.PASSWORD);
+        const verify = await Verify.findOne({data: email, code: code.PASSWORD});
+        if(verify){
+            await Verify.updateOne({data: email, code: code.PASSWORD, secret: newSecret});
+        }
+        else{
+            // 기존 verify 가 없을 때 새 verify document 생성
+            await Verify.create({data: email, code: code.PASSWORD, secret: newSecret});
+        }
+
+        // 이메일 전송
+        const subject = "비밀번호 찾기 이메일 인증 코드를 확인해주세요.";
+        const text = `이메일 인증 코드 : ${newSecret}`;
+        const result = await sendEmail(email, subject, text);
+        if(result === 1){
+            return {code: 200, message: "인증 코드가 정상 발송되었습니다."};
+        }
+        else{
+            const error = new Error();
+            Object.assign(error, {code: 400, message: "메일 인증 코드가 발송되지 않았습니다."})
+            throw error;
+        }
+    }
+
+    // 회원 가입 메일 인증 코드 발급
+    async joinVerify({email}){
+        // 인증 코드 받는 이메일이 이미 존재하는지 검사
+        // 이메일 인증이 정식으로 들어갈 때 createUser 에 있는 이메일 존재 검사는 필요없음.
+        const user = await User.findOne({email});
+        if(user){
+            const error = new Error();
+            Object.assign(error, {code: 400, message: "이미 회원가입 되어 있는 이메일입니다."});
+            throw error;
+        }
+
+        // 기존 verify 데이터가 있을 시 새 secret 으로 변경
+        const newSecret = generateRandomValue(code.VERIFYCODE);
+        const verify = await Verify.findOne({data: email, code: code.VERIFYCODE});
+        if(verify){
+            await Verify.updateOne({data: email, code: code.VERIFYCODE, secret: newSecret});
+        }
+        else{
+            // 기존 verify 가 없을 때 새 verify document 생성
+            await Verify.create({data: email, code: code.VERIFYCODE, secret: newSecret});
+        }
+
+        // 이메일 전송
+        const subject = "회원가입 이메일 인증 코드를 확인해주세요.";
+        const text = `이메일 인증 코드 : ${newSecret}`;
+        const result = await sendEmail(email, subject, text);
+        if(result === 1){
+            return {code:200, message: "인증 코드가 정상 발송되었습니다."};
+        }
+        else{
+            const error = new Error();
+            Object.assign(error, {code: 400, message: "메일 인증 코드가 발송되지 않았습니다."})
+            throw error;
+        }
+    }
+
+    // 인증 코드 확인 요청
+    async joinVerifyConfirm({email, secret}){
+        // verify document find
+        // 6 자리는 회원가입 인증 코드 요청 길이
+        let verify;
+        // 회원가입에서 인증 코드 요청했었는지, 비밀번호 찾기에서 인증 코드 요청했었는지 판단 변수
+        let myCode;
+
+        if(secret.length !== 6 && secret.length !== 8){
+            const error = new Error();
+            Object.assign(error, {code: 400, message: "인증 코드의 길이를 확인해주세요."});
+            throw error;
+        }
+        else if(secret.length === 6){
+            myCode = code.VERIFYCODE;
+            verify = await Verify.findOne({data: email, code: code.VERIFYCODE});
+            if(!verify){
+                const error = new Error();
+                Object.assign(error, {code: 400, message: "인증 코드 길이 확인이 필요하거나, 인증 요청하지 않은 이메일 입니다."});
+                throw error;
+            } else {
+                // 인증 코드 비교 진행( 정상 인증 코드로 판단 시 is_verified 를 true 로 변경하여 회원가입 절차가 가능하도록 함)
+                if(secret === verify.secret){
+                    await Verify.updateOne({data: email, code: code.VERIFYCODE},{
+                        is_verified: true
+                    });
+                    return {code: 200, message: "이메일 인증 코드가 정상적으로 확인되었습니다."}   
+                } else {
+                    await Verify.updateOne({data: email, code: code.VERIFYCODE},{
+                        is_verified: false
+                    });
+                    const error = new Error();
+                    Object.assign(error, {code: 400, message: "이메일 인증 코드를 다시 확인해주세요."});
+                    throw error;
+                }
+            }
+        } 
+
+        // 8 자리는 비밀번호 찾기 인증 코드 요청 길이
+        else if(secret.length === 8){
+            myCode = code.PASSWORD;
+            verify = await Verify.findOne({data: email, code: code.PASSWORD});
+            if(!verify){
+                const error = new Error();
+                Object.assign(error, {code: 400, message: "인증 코드 길이 확인이 필요하거나, 인증 요청하지 않은 이메일 입니다."});
+                throw error;
+            } else {
+                if(secret === verify.secret){
+                    // 비밀번호 찾기는 비밀번호 찾기 요청 버튼을 눌렀을 때 인증 데이터 삭제하여야 함
+                    await Verify.deleteMany({data: email, code: code.PASSWORD});
+                    return {code: 200, message: "이메일 인증 코드가 정상적으로 확인되었습니다."}
+                } else {
+                    await Verify.updateOne({data: email, code: code.PASSWORD},{
+                        is_verified: false
+                    });
+                    const error = new Error();
+                    Object.assign(error, {code: 400, message: "이메일 인증 코드를 다시 확인해주세요."});
+                    throw error;
+                }
+            }
+        }
+    }
+
+    // user ID 찾기 (이름과 휴대전화)
+    async findUserID(bodyData){
+        const {name, phone} = bodyData;
+        // name, phone 확인
+        const user = await User.findOne({name, phone});
+        if(!user){
+            const error = new Error();
+            Object.assign(error, {code: 404, message: "이름과 전화번호로 조회된 회원이 없습니다."})
+            throw error;
+        }
+        return {data: user.email, code: 200, message: "유저 ID가 성공적으로 조회되었습니다. ID를 확인해주세요!"};
+    };
 
     // update 수정
     async updateUser({email}, bodyData, imageFiles){
