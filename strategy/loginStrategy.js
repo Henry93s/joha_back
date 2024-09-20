@@ -24,12 +24,14 @@ const local = new LocalStrategy(config, async(email, password, done) => {
 
         // password 를 백엔드에 보내 줄 때 aes-128 양방향 암호화 적용
         // 백엔드에서는 aes-128 을 복호화하고 sha-256 해시화하여 db sha-256 해시 값과 비교시킨다.
+        /*
         const key = process.env.AES_KEY;
         const decryptedPassword = decryptPassword(password, key);
+        */
 
         // password 일치 여부 검사
         // sha256 단방향 해시 비밀번호 사용
-        const hash = crypto.createHash('sha256').update(decryptedPassword).digest('hex');
+        const hash = crypto.createHash('sha256').update(password /*decryptedPassword*/).digest('hex');
         if(user.password !== hash){
             const error = new Error();
             Object.assign(error, {code: 404, message: "비밀번호가 일치하지 않습니다."});
