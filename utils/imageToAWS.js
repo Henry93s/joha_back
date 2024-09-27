@@ -1,15 +1,15 @@
 // 이미지 해상도 조절
-const sharp = require('sharp');
+const sharp = require("sharp");
 // 이미지 확장자 검사에 쓰일 예정
-const path = require('path');
-const { S3 } = require('@aws-sdk/client-s3');
+const path = require("path");
+const { S3 } = require("@aws-sdk/client-s3");
 // AWS S3 클라이언트 설정 (v3)
 const s3 = new S3({
     region: process.env.AWS_REGION,
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-    }
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
 });
 
 const imageToAWS = async (imageFiles) => {
@@ -17,28 +17,29 @@ const imageToAWS = async (imageFiles) => {
     // 단 return 할 때만 주의(s3 에 맞는 프로퍼티 체크)
     const imageProcessing = async (imageBuffer) => {
         // resize() 하기전에 .rotate() 호출해야 브라우저에 따라 회전이 다르게 보이는 현상 해결됨
-        return sharp(imageBuffer).rotate() // EXIF 데이터에 기반하여 자동으로 이미지 회전 조정
-            .resize({width: 800, withoutEnlargement: true})
+        return sharp(imageBuffer)
+            .rotate() // EXIF 데이터에 기반하여 자동으로 이미지 회전 조정
+            .resize({ width: 800, withoutEnlargement: true })
             .withMetadata()
-            .webp({quality: 70})
+            .webp({ quality: 70 })
             .toBuffer(); // 처리 후 버퍼 반환
     };
-    
+
     // 파일들을 S3에 업로드
     const keyFiles = [];
     const s3Uploads = imageFiles.map(async (v) => {
         const processedBuf = await imageProcessing(v.buffer);
         const originalName = path.basename(v.originalname);
-        const fileName = originalName.slice(0, originalName.lastIndexOf('.')).concat(".webp");
-        
+        const fileName = originalName.slice(0, originalName.lastIndexOf(".")).concat(".webp");
+
         const fileKey = `uploads/${Date.now()}_${fileName}`;
         keyFiles.push(fileKey);
         const params = {
-            Bucket: 'joyhobbybucket',
+            Bucket: "joyhobbybucket",
             Key: fileKey,
             Body: processedBuf,
-            ContentType: 'image/webp',
-            ACL: 'public-read'
+            ContentType: "image/webp",
+            ACL: "public-read",
         };
 
         return s3.putObject(params);
@@ -48,11 +49,11 @@ const imageToAWS = async (imageFiles) => {
 
     // s3 추가 정보
     const imageUrl = uploadResults.map((v) => {
-        return `https://${'gwsimagebucket2'}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
+        return `https://${"joyhobbybucket"}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
     });
-    const fixedImageUrl = keyFiles.map((v,i) => {
-        return imageUrl[i].concat(v)
-    })
+    const fixedImageUrl = keyFiles.map((v, i) => {
+        return imageUrl[i].concat(v);
+    });
 
     return fixedImageUrl;
 };
