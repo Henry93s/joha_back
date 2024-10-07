@@ -88,7 +88,7 @@ router.put(
 
 // delete (삭제)
 router.delete(
-    "/",
+    "/delete",
     asyncHandler(async (req, res) => {
         const { email } = req.body;
         const result = await userService.deleteUser({ email });
