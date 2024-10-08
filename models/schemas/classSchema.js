@@ -52,7 +52,7 @@ const classSchema = new Schema({
         ref: 'User',
         required: true
     },
-    // 클래스 메인 이미지 
+    // 클래스 메인 이미지 (필수)
     main_image : {
         type: String,
         required: true
@@ -131,7 +131,7 @@ const classSchema = new Schema({
         default: 0
     },
     // 레슨 댓글(추가 스키마 연결)
-    comments: [CommentSchema], 
+    //comments: [CommentSchema], 
     // 레슨 생성일
     create_at: {
         type: String,

@@ -39,14 +39,12 @@ class ClassService {
         } else {
             sub_images = [];
         }
-
+        
         const data = await Class.create({
             author: author,
             title: bodyData.title,
             main_available_time: bodyData.main_available_time,
             sub_available_times: bodyData.sub_available_times,
-            like: Number(bodyData.like),
-            star: Number(bodyData.star),
             main_location: bodyData.main_location,
             sub_location: bodyData.sub_location,
             duration_time: Number(bodyData.duration_time),
@@ -54,8 +52,7 @@ class ClassService {
             introduce: bodyData.introduce,
             price: Number(bodyData.price),
             main_image: main_image,
-            sub_images: sub_images,
-            is_premium: bodyData.is_premium
+            sub_images: sub_images
         });
         return {data: data, code: 200, message: `레슨 등록 완료`};
     };
@@ -63,9 +60,10 @@ class ClassService {
   // all class select
     async findAllClass() {
         const classes = await Class.find();
+        // (find()이 결과를 찾지 못하면 length === 0 을 반환함)
         if (classes.length === 0) {
             const error = new Error("조회된 클래스가 없습니다.");
-            Object.assign(error, { code: 404 });
+            Object.assign(error, { code: 404, message: "조회된 레슨이 없습니다." });
             throw error;
         }
         return { code: 200, data: classes, message: "전체 클래스 조회 완료" };
@@ -79,9 +77,10 @@ class ClassService {
             throw error;
         }
         const titleClass = await Class.find({ title });
-        if (!titleClass.length) {
+        // (find()이 결과를 찾지 못하면 length === 0 을 반환함)
+        if (titleClass.length === 0) {
             const error = new Error("해당 제목으로 조회된 레슨이 없습니다.");
-            Object.assign(error, { code: 404 });
+            Object.assign(error, { code: 404, message: "조회된 레슨이 없습니다." });
             throw error;
         }
         return { code: 200, data: titleClass, message: "타이틀로 조회 완료" };
@@ -89,10 +88,17 @@ class ClassService {
 
   // one class select
   async findClassById(nanoid) {
-    const oneClass = Class.findOne(
+    const oneClass = await Class.findOne(
       { nanoid },
       "nanoid author main_image sub_images title main_available_time sub_available_time main_location sub_location duration_time price contents introduce is_premium like star comments create_at update_at"
     );
+
+    // (findOne()이 결과를 찾지 못하면 null을 반환함)
+    if(!oneClass){ 
+        const error = new Error("조회된 레슨이 없습니다.");
+        Object.assign(error, { code: 404, message: "조회된 레슨이 없습니다." });
+        throw error;
+    }
     
     return { data: oneClass, code: 200, message: "클래스 조회 완료" };
   }
@@ -215,13 +221,14 @@ class ClassService {
     
     // 먼저 검색 결과 데이터를 구함 (주석 처리 부분)
     let checkClasses;
+    /*
     if(!mymode){
         // MongoDB의 Aggregation Framework 를 사용하여 "여러 단계의 쿼리와 필터링을 연속" 으로 수행 가능
         checkClasses = await Class.aggregate([
             // 조건에 맞는 게시물 조회
-            /*
+            
             { $match: query },
-            */
+            
             
             // Reserve 컬렉션과 조인
             {
@@ -234,6 +241,7 @@ class ClassService {
             },
             // 시간 범위에 맞는 예약 데이터 필터링
             {
+                
                 $addFields: {
                     reservations: {
                         $filter: {
@@ -252,6 +260,7 @@ class ClassService {
                         }
                     }
                 }
+                
             },
             // 예약이 없는 게시물만 필터링
             {
@@ -261,9 +270,10 @@ class ClassService {
             }
         ]);
     } else {
+    */
         const user = await User.findOne({email});
         checkClasses = await Class.find({author: user});
-    }
+    // }
 
     // 마지막 검색 날짜가 예약 테이블에 있는 기간과 겹칠 경우 해당 class 를 제외시킴
     // 기본 날짜 값은 "다음날"
@@ -305,12 +315,13 @@ async getClasses({nowpage, /* search, */ mymode, email}){
 
     // 먼저 검색 결과 데이터를 구함 (주석 처리 부분) 최신 생성일 기준으로 정렬함
     let checkClasses;
+    /*
     if(!mymode){
         checkClasses = await Class.aggregate([
             // 조건에 맞는 게시물 조회
-            /*
+            
             { $match: query },
-            */
+            
 
             // Reserve 컬렉션과 조인
             {
@@ -341,6 +352,7 @@ async getClasses({nowpage, /* search, */ mymode, email}){
                         }
                     }
                 }
+                
             },
             // 예약이 없는 게시물만 필터링
             {
@@ -386,13 +398,14 @@ async getClasses({nowpage, /* search, */ mymode, email}){
             }
         ]);
     } else {
+     */
         // 등록 수업 페이지 (자신의 숙소는 최대 4개까지만 등록가능하므로 페이지네이션이 필요 없음
         const user = await User.findOne({email});
         checkClasses = await Post.find({author: user}).sort({createdAt: -1}).populate({
             path: 'author',
             select: "email name phone photo"
         });
-    }
+    // }
      
     // 마지막 검색 날짜가 예약 테이블에 있는 기간과 겹칠 경우 해당 post 를 제외시킴
     // 기본 날짜 값은 "다음날"

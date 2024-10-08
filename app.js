@@ -29,7 +29,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use(express.static('public'));
+
 // cookie parser
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
@@ -53,6 +53,9 @@ mongoose.connection.on('err', (err) => {
 app.use('/users', userRouter);
 app.use('/class', classRouter);
 app.use('/login', loginRouter);
+
+// 정적 파일 (default html)
+app.use(express.static('public'));
 
 // app.get (front routing)
 app.get('*', (req, res) => {
