@@ -3,17 +3,17 @@ const asyncHandler = require("../middlewares/async-handler");
 const classService = require("../services/classService");
 // multer 이미지 업로드 설정 가져오기
 const upload = require("../utils/multerConfig");
+const reqUserCheck = require("../middlewares/reqUserCheck");
 
 const router = Router();
 
 /* create  */
 router.post(
   "/",
-  upload.array("photo"),
+  upload.array("photo"), 
+  reqUserCheck,
   asyncHandler(async (req, res) => {
     const bodyData = req.body;
-    const imageFiles =
-      !req.files || req.files.length === 0 ? ["notFound"] : req.files;
 
     bodyData.email = req.user.email;
     // 요청 파일 없음 에러(임의의 코드 : 410)
@@ -46,8 +46,13 @@ router.get(
 
 /* nanoid 로 특정 레슨 조회 */
 router.get(
-    "/nanoid",
-    asyncHandler(async (req, res) => {}),
+    "/read/:nanoid",
+    asyncHandler(async (req, res) => {
+      const {nanoid} = req.params;
+      console.log(nanoid)
+      const result = await classService.findClassById(nanoid);
+      return res.status(200).json(result);
+    }),
 );
 
 // update (수정)
@@ -69,5 +74,29 @@ router.delete(
     return res.status(200).json(result);
   })
 );
+
+// 수업 리스트 페이지 정보 read
+router.post('/page', asyncHandler(async (req,res) => { 
+  const {mymode} = req.body;
+  // 사용자가 mymode(등록수업에서 내 수업만 요청하는지) 체크
+  if(mymode && !req.user){
+      return res.status(400).json({code: 400, message: "로그인하지 않은 사용자입니다."});
+  }
+  const email = req.user ? req.user.email : "";
+  const result = await classService.getClassesPage({mymode, email});
+  return res.status(200).json(result);
+}));
+
+// 수업 리스트 목록 read
+router.post('/page/read', asyncHandler(async (req,res) => {
+  const {nowpage, mymode} = req.body;
+  // 사용자가 mymode(등록수업에서 내 수업만 요청하는지) 체크
+  if(mymode && !req.user){
+      return res.status(400).json({code: 400, message: "로그인하지 않은 사용자입니다."});
+  }
+  const email = req.user ? req.user.email : "";
+  const result = await classService.getClassesPage({nowpage, mymode, email});
+  return res.status(200).json(result);
+}));
 
 module.exports = router;
