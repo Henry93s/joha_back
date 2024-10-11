@@ -45,10 +45,12 @@ class UserService {
         // 이메일 인증이 되었고 회원가입을 진행하므로 더 이상 쓸모가 없으므로 제거
         await Verify.deleteMany(verify);
 
-        /* front 로그인 개발 시 주석 해제
+        // front 암호화 적용 시 주석 해제
+        // password 를 백엔드에 보내 줄 때 aes-128 양방향 암호화 적용
+        // 백엔드에서는 aes-128 을 복호화하고 sha-256 해시화하여 db sha-256 해시 값과 비교시킨다.
         const key = process.env.AES_KEY;
         const decryptedPassword = decryptPassword(bodyData.password, key);
-        */
+
         // 실제 프론트에서 이미지 확장자 검사, 파일 용량 검사 수행해서 넘어옴 !
         // aws 버킷에 옮기기 전 이미지 가공 + 버킷 옮기기 + url 반환 작업(util 로 옮김)
         let photo;
@@ -62,7 +64,8 @@ class UserService {
         }
 
         // sha256 단방향 해시 비밀번호 사용
-        const hash = crypto.createHash("sha256").update(bodyData.password /*decryptedPassword*/).digest("hex");
+        const hash = crypto.createHash("sha256").update(decryptedPassword).digest("hex");
+        console.log("해시화된 비밀번호 (SHA-256):", hash); // 해시화된 비밀번호 확인
         const newUser = await User.create({
             email: bodyData.email,
             name: bodyData.name,
@@ -261,15 +264,14 @@ class UserService {
         // 비밀 번호 수정사항이 있을 경우, sha256 단방향 해시 비밀번호 사용
         // 10자리 패스워드 프론트와 맞춤(특수문자 포함은 front 에서 체크 후 넘어옴)
         if (bodyData.password && bodyData.password.length >= 10) {
-            /* front 암호화 적용 시 주석 해제
+            // front 암호화 적용 시 주석 해제
             // password 를 백엔드에 보내 줄 때 aes-128 양방향 암호화 적용
             // 백엔드에서는 aes-128 을 복호화하고 sha-256 해시화하여 db sha-256 해시 값과 비교시킨다.
             const key = process.env.AES_KEY;
             const decryptedPassword = decryptPassword(bodyData.password, key);
-            */
 
             // sha256 단방향 해시 비밀번호 사용
-            const hash = crypto.createHash("sha256").update(bodyData.password /*decryptedPassword*/).digest("hex");
+            const hash = crypto.createHash("sha256").update(decryptedPassword).digest("hex");
             bodyData.password = hash;
         } else {
             Reflect.deleteProperty(bodyData, "password");
