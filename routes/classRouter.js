@@ -101,4 +101,11 @@ router.post('/page/read', asyncHandler(async (req,res) => {
   return res.status(200).json(result);
 }));
 
+// 좋아요 버튼 동작 요청 라우터
+router.post('/uppost', asyncHandler(async (req, res) => {
+  const {email, nanoid} = req.body;
+  const result = await classService.upPost({email, nanoid});
+  return res.status(200).json(result);
+}));
+
 module.exports = router;

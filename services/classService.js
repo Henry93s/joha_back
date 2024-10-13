@@ -1,4 +1,4 @@
-const { User, Class } = require("../models");
+const { User, Class, Like } = require("../models");
 const newDate = require("../utils/newDate");
 const crypto = require("crypto");
 const imageToAWS = require("../utils/imageToAWS");
@@ -39,7 +39,7 @@ class ClassService {
         } else {
             sub_images = [];
         }
-        
+
         const data = await Class.create({
             author: author,
             title: bodyData.title,
@@ -198,7 +198,7 @@ class ClassService {
     }
   }
 
-  // 페이지 정보 read (mymode && 등록숙소 페이지에서 내가 등록한 숙소만 보기)
+  // 페이지 정보 read (mymode && 등록수업 페이지에서 내가 등록한 수업만 보기)
   async getClassesPage({mymode, /* search, */ email}){
     // 첫 페이지 진입이므로 1 고정
     const page = 1;
@@ -293,7 +293,7 @@ class ClassService {
 }
 
 
-// 숙소 리스트 read
+// 수업 리스트 read
 async getClasses({nowpage, /* search, */ mymode, email}){
     const page = Number(nowpage);
     const perPage = 6;
@@ -399,7 +399,7 @@ async getClasses({nowpage, /* search, */ mymode, email}){
         ]);
     } else {
      */
-        // 등록 수업 페이지 (자신의 숙소는 최대 4개까지만 등록가능하므로 페이지네이션이 필요 없음
+        // 등록 수업 페이지 (자신의 수업는 최대 4개까지만 등록가능하므로 페이지네이션이 필요 없음
         const user = await User.findOne({email});
         checkClasses = await Post.find({author: user}).sort({createdAt: -1}).populate({
             path: 'author',
@@ -411,8 +411,43 @@ async getClasses({nowpage, /* search, */ mymode, email}){
     // 기본 날짜 값은 "다음날"
     let resultClasses = checkClasses;
 
-    return {result: resultClasses, code: 200, message: `숙소 정보 읽기 완료`};
+    return {result: resultClasses, code: 200, message: `수업 정보 읽기 완료`};
 }
+
+// 좋아요 기능 요청 동작 (한번 클릭 시 up, 또 같은 계정으로 같은 글 up 시 up을 취소) (완료)
+async upPost({email, nanoid}){
+    const author = await User.findOne({email});
+    if(!author) { 
+        const error = new Error();
+        Object.assign(error, {code: 400, message: "유저 정보를 가져오지 못했습니다. 다시 확인해주세요."});
+        throw error;
+    }
+    const classs = await Class.findOne({nanoid}).populate('author');
+    if(!classs) { 
+        const error = new Error();
+        Object.assign(error, {code: 400, message: "수업 정보를 가져오지 못했습니다. 다시 확인해주세요."});
+        throw error;
+    }
+
+    const data = await Like.findOne({user_email: email, class_nanoid: nanoid});
+    if(!data) {
+        // up 하지 않은 게시물 로 up 데이터 추가
+        await Like.create({user_email: email, class_nanoid: nanoid});
+        // + up 계산
+        const like = classs.like;
+        await Class.updateOne({class_nanoid: nanoid}, {like: like + 1});
+        return {code: 200, message: '좋아요를 추가하였습니다!'};
+    } else {
+        // 이미 up 한 게시물 로 up 데이터 제거
+        await Like.deleteOne({user_email: email, post_nanoid: nanoid});
+        // - up 계산
+        const like = classs.like;
+        await Post.updateOne({class_nanoid: nanoid}, {like: like - 1});
+        return {code: 200, message: '좋아요를 삭제하였습니다!'};
+    }
+}
+
+
 }
 
 const classService = new ClassService();
