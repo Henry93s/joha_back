@@ -26,7 +26,7 @@ const local = new LocalStrategy(config, async (email, password, done) => {
         // 백엔드에서는 aes-128 을 복호화하고 sha-256 해시화하여 db sha-256 해시 값과 비교시킨다.
         const key = process.env.AES_KEY;
         const decryptedPassword = decryptPassword(password, key);
-
+        
         // password 일치 여부 검사
         // sha256 단방향 해시 비밀번호 사용
         const hash = crypto.createHash("sha256").update(decryptedPassword).digest("hex");
@@ -36,14 +36,11 @@ const local = new LocalStrategy(config, async (email, password, done) => {
             Object.assign(error, { code: 404, message: "비밀번호가 일치하지 않습니다." });
             throw error;
         }
-        console.log(user);
 
         // 정상 done 콜백 함수 호출
         done(null, {
-            nanoid: user.nanoid,
             email: user.email,
             name: user.name,
-            nickname: user.nickname,
             phone: user.phone,
             is_admin: user.is_admin,
             photo: user.photo ? user.photo : "",

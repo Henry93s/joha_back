@@ -22,7 +22,10 @@ const app = express();
 dotenv.config();
 
 // 모든 도메인에서 cors 허용 (개발 및 테스트)
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000', 
+    credentials: true
+}));
 
 
 // body parser

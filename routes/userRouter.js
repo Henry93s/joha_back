@@ -36,7 +36,6 @@ router.get(
         const data = { email: req.user.email, name: req.user.name };
         // 프론트 요청에 대해 최신 닉네임, 연락처, 프로필 포토 데이터를 넘겨주기(수정이 가능한 데이터 이므로)
         const result = await userService.findByEmail({ email: data.email });
-        data.email = result.data.email;
         data.phone = result.data.phone;
         data.is_admin = result.data.is_admin;
         data.photo = result.data.photo;
@@ -135,12 +134,7 @@ router.post(
     "/logout",
     asyncHandler(async (req, res) => {
         res.cookie("token", null, {
-            //secure: false,
-            maxAge: 0,
-            /*
-        sameSite: 'None', // 쿠키를 크로스 도메인 요청에 포함시키기 위해 'None'으로 설정
-        path: '/' // 쿠키의 경로 설정
-        */
+            maxAge: 0
         });
         return res.status(200).json({ code: 200, message: "정상적으로 로그아웃되었습니다." });
     }),
