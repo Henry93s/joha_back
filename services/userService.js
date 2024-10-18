@@ -65,7 +65,6 @@ class UserService {
 
         // sha256 단방향 해시 비밀번호 사용
         const hash = crypto.createHash("sha256").update(decryptedPassword).digest("hex");
-        console.log("해시화된 비밀번호 (SHA-256):", hash); // 해시화된 비밀번호 확인
         const newUser = await User.create({
             email: bodyData.email,
             name: bodyData.name,
@@ -340,13 +339,12 @@ class UserService {
         return users;
     }
     // findOne by email 이메일로 유저 찾기
-    async findByEmail(email) {
+    async findByEmail({email}) {
         // console.log(email);
         const user = await User.findOne(
             { email },
             "email name phone photo base_address detail_address is_admin create_at update_at",
         );
-        console.log(user);
         if (!user) {
             const error = new Error();
             Object.assign(error, {
